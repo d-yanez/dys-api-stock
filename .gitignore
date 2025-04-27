@@ -1,0 +1,34 @@
+node_modules/
+env.sh
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Directorio de compilación
+dist/
+
+# Variables de entorno locales
+.env
+
+# Archivos de configuración de la nube
+.env.yaml
+
+# Sistema Mac
+.DS_Store
+
+# Directorios temporales
+.tmp/
+temp/
+
+# Archivos específicos del sistema operativo
+Thumbs.db
+
+# Ignorar todas las credenciales de GCP
+/credentials/
