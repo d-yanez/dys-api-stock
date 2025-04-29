@@ -7,5 +7,6 @@ export const {
   MONGODB_URI,
   TELEGRAM_BOT_TOKEN,
   TELEGRAM_CHAT_ID,
+  API_KEY,
   PORT = 8080
 } = process.env;
