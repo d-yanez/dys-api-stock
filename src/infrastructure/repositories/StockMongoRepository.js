@@ -52,4 +52,58 @@ export default class StockMongoRepository extends StockRepository {
     });
     return updated;
   }
+
+  async addStockByItemId({ stockItemId, qty, now }) {
+    logger.info('Repo: iniciando addStockByItemId', {
+      location: 'StockMongoRepository.addStockByItemId',
+      stockItemId,
+      qty
+    });
+
+    const previous = await StockItemModel.findOneAndUpdate(
+      { stockItemId },
+      {
+        $inc: { stock: qty },
+        $set: { lastUpdate: now }
+      },
+      { new: false }
+    ).lean();
+
+    logger.info('Repo: resultado addStockByItemId', {
+      location: 'StockMongoRepository.addStockByItemId',
+      stockItemId,
+      found: Boolean(previous)
+    });
+
+    return previous;
+  }
+
+  async subStockByItemId({ stockItemId, qty, now }) {
+    logger.info('Repo: iniciando subStockByItemId', {
+      location: 'StockMongoRepository.subStockByItemId',
+      stockItemId,
+      qty
+    });
+
+    const previous = await StockItemModel.findOneAndUpdate(
+      { stockItemId },
+      [
+        {
+          $set: {
+            stock: { $max: [0, { $subtract: ['$stock', qty] }] },
+            lastUpdate: now
+          }
+        }
+      ],
+      { new: false }
+    ).lean();
+
+    logger.info('Repo: resultado subStockByItemId', {
+      location: 'StockMongoRepository.subStockByItemId',
+      stockItemId,
+      found: Boolean(previous)
+    });
+
+    return previous;
+  }
 }

@@ -14,4 +14,8 @@ router.get('/batch/sku', StockController.getBatch);
 // Creación / actualización de stock
 router.post('/stock', StockController.update);
 
+// Movimientos de inventario por stockItemId
+router.post('/stock/trx/add', StockController.trxAdd);
+router.post('/stock/trx/sub', StockController.trxSub);
+
 export default router;
