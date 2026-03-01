@@ -34,6 +34,38 @@ const validateMovementBody = (body) => {
   return { valid: true, stockItemId, qty };
 };
 
+const validateUpdateBody = (body) => {
+  const sku = Number(body.sku);
+  const location = typeof body.location === 'string' ? body.location.trim() : '';
+  const stock = Number(body.stock);
+  let stockItemId;
+
+  if (!Number.isFinite(sku)) {
+    return { valid: false, error: 'sku debe ser number requerido' };
+  }
+
+  if (!location) {
+    return { valid: false, error: 'location debe ser string requerido' };
+  }
+
+  if (!Number.isInteger(stock) || stock < 0) {
+    return { valid: false, error: 'stock debe ser integer >= 0 requerido' };
+  }
+
+  if (body.stockItemId !== undefined) {
+    if (typeof body.stockItemId !== 'string') {
+      return { valid: false, error: 'stockItemId debe ser string opcional' };
+    }
+
+    stockItemId = body.stockItemId.trim();
+    if (!stockItemId) {
+      return { valid: false, error: 'stockItemId no debe ser vacío' };
+    }
+  }
+
+  return { valid: true, sku, location, stock, stockItemId };
+};
+
 export default class StockController {
   /**
    * GET /api/stock/:sku
@@ -77,17 +109,41 @@ export default class StockController {
    * POST /api/stock
    */
   static update = async (req, res) => {
-    const { sku, stock, location } = req.body;
-    logger.info('Request POST /api/stock', { sku, stock, location });
+    const validation = validateUpdateBody(req.body);
+    logger.info('Request POST /api/stock', { body: req.body });
+
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
 
     try {
-      const updated = await updateStock(repo)({ sku, stock, location });
-      await notifyStockChange({ sku, stock, location });
+      const updated = await updateStock(repo)({
+        sku: validation.sku,
+        stock: validation.stock,
+        location: validation.location,
+        stockItemId: validation.stockItemId
+      });
+      await notifyStockChange({
+        sku: validation.sku,
+        stock: validation.stock,
+        location: validation.location
+      });
 
-      logger.info('Success POST /api/stock', { sku, stock, location });
+      logger.info('Success POST /api/stock', {
+        sku: validation.sku,
+        stock: validation.stock,
+        location: validation.location,
+        stockItemId: validation.stockItemId
+      });
       return res.json(updated);
     } catch (err) {
-      logger.error('Error POST /api/stock', { sku, stock, location, error: err.message });
+      logger.error('Error POST /api/stock', {
+        sku: validation.sku,
+        stock: validation.stock,
+        location: validation.location,
+        stockItemId: validation.stockItemId,
+        error: err.message
+      });
       return res.status(500).json({ error: 'Error interno' });
     }
   };

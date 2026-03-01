@@ -10,9 +10,9 @@ export default class StockRepository {
   }
 
   /**
-   * @param {{ sku: number, stock: number, location: string }} params
+   * @param {{ sku: number, stock: number, location: string, stockItemId?: string }} params
    */
-  async upsertStock({ sku, stock, location }) {
+  async upsertStock({ sku, stock, location, stockItemId }) {
     throw new Error('Método no implementado');
   }
 

@@ -31,16 +31,27 @@ export default class StockMongoRepository extends StockRepository {
     return result;
   }
 
-  async upsertStock({ sku, stock, location }) {
+  async upsertStock({ sku, stock, location, stockItemId }) {
     logger.info('Repo: iniciando upsertStock', {
       location: 'StockMongoRepository.upsertStock',
       sku,
       stock,
-      location
+      location,
+      stockItemId
     });
+
+    const setPayload = {
+      stock,
+      lastUpdate: new Date()
+    };
+
+    if (stockItemId !== undefined) {
+      setPayload.stockItemId = stockItemId;
+    }
+
     const updated = await StockItemModel.findOneAndUpdate(
       { sku, location },
-      { $set: { stock, lastUpdate: new Date() } },
+      { $set: setPayload },
       { upsert: true, new: true }
     ).lean();
     logger.info('Repo: upsertStock completado', {
@@ -48,6 +59,7 @@ export default class StockMongoRepository extends StockRepository {
       sku,
       stock,
       location,
+      stockItemId,
       updatedId: updated._id
     });
     return updated;

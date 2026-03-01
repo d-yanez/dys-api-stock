@@ -29,19 +29,21 @@ export const getBatchStock = (repository) => async (skusParam) => {
   return data;
 };
 
-export const updateStock = (repository) => async ({ sku, stock, location }) => {
+export const updateStock = (repository) => async ({ sku, stock, location, stockItemId }) => {
   logger.info('UseCase: updateStock entrada', {
     location: 'updateStock',
     sku,
     stock,
-    location
+    location,
+    stockItemId
   });
-  const updated = await repository.upsertStock({ sku, stock, location });
+  const updated = await repository.upsertStock({ sku, stock, location, stockItemId });
   logger.info('UseCase: updateStock salida', {
     location: 'updateStock',
     sku,
     stock,
     location,
+    stockItemId,
     updatedId: updated._id
   });
   return updated;
