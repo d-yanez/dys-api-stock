@@ -23,7 +23,8 @@ steps:
           --service-account=sa-dys-api-stock@${PROJECT_ID}.iam.gserviceaccount.com \
           --allow-unauthenticated \
           --port=8080 \
-          --timeout=300s
+          --timeout=300s \
+          --max-instances=5
 
 images:
   - 'gcr.io/$PROJECT_ID/dys-api-stock:$SHORT_SHA'
