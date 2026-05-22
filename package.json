@@ -5,7 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/app.js",
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "deps:policy": "node -e \"const p=require('./package.json');const bad=[];for(const sec of ['dependencies','devDependencies','optionalDependencies']){for(const [n,v] of Object.entries(p[sec]||{})){if(v==='latest'||v==='*'){bad.push(sec+':'+n+'@'+v)}}} if(bad.length){console.error('Blocked dependency specs:\\\\n'+bad.join('\\\\n'));process.exit(1)} console.log('deps policy ok')\"",
+    "deps:install:ci": "npm ci --ignore-scripts"
   },
   "keywords": [],
   "author": "",
