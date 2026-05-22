@@ -31,4 +31,5 @@ temp/
 Thumbs.db
 
 # Ignorar todas las credenciales de GCP
-/credentials/
+/credentials/.cache/
+.atl/
