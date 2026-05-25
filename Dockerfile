@@ -3,8 +3,9 @@ FROM node:20-slim
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && corepack prepare pnpm@10.24.0 --activate
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
 COPY . .
 
