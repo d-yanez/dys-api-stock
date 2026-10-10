@@ -17,6 +17,15 @@ export default class StockRepository {
   }
 
   /**
+   * Atomically applies, rejects, or records a no-op for an ordered stock event.
+   * @param {{ source: string, eventKey: string, revision: number, payloadHash: string, sku: number, stock: number, location: string, stockItemId?: string }} params
+   * @returns {Promise<{ response: object, shouldNotify: boolean }>}
+   */
+  async processStockUpdateEvent(params) {
+    throw new Error('Método no implementado');
+  }
+
+  /**
    * @param {{ stockItemId: string, qty: number, now: Date }} params
    */
   async addStockByItemId({ stockItemId, qty, now }) {
