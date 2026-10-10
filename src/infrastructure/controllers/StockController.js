@@ -4,6 +4,7 @@ import {
   getStockBySku,
   getBatchStock,
   updateStock,
+  updateStockV2,
   addStockTransaction,
   subStockTransaction
 } from '../../useCases/stockUseCases.js';
@@ -66,6 +67,108 @@ const validateUpdateBody = (body) => {
   return { valid: true, sku, location, stock, stockItemId };
 };
 
+const validateEventHeaders = (req) => {
+  const rawEventKey = req.get('Idempotency-Key');
+  const rawRevision = req.get('X-Event-Revision');
+  const hasEventKey = rawEventKey !== undefined;
+  const hasRevision = rawRevision !== undefined;
+
+  if (hasEventKey !== hasRevision) {
+    return { valid: false, error: 'Idempotency-Key y X-Event-Revision deben enviarse juntos' };
+  }
+  if (!hasEventKey) {
+    return { valid: true, v2: false };
+  }
+  if (typeof rawEventKey !== 'string') {
+    return { valid: false, error: 'Idempotency-Key inválido' };
+  }
+
+  const eventKey = rawEventKey.trim();
+  if (!eventKey || eventKey.length > 200) {
+    return { valid: false, error: 'Idempotency-Key debe tener entre 1 y 200 caracteres' };
+  }
+  if (typeof rawRevision !== 'string' || !/^[1-9]\d*$/.test(rawRevision)) {
+    return { valid: false, error: 'X-Event-Revision debe ser un entero positivo canónico' };
+  }
+
+  const revision = Number(rawRevision);
+  if (!Number.isSafeInteger(revision) || String(revision) !== rawRevision) {
+    return { valid: false, error: 'X-Event-Revision debe ser un entero positivo seguro' };
+  }
+
+  return { valid: true, v2: true, eventKey, revision };
+};
+
+export const createUpdateHandler = ({ repository, notify }) => async (req, res) => {
+  const bodyValidation = validateUpdateBody(req.body);
+  const eventValidation = validateEventHeaders(req);
+  logger.info('Request POST /api/stock', { body: req.body });
+
+  if (!bodyValidation.valid) {
+    return res.status(400).json({ error: bodyValidation.error });
+  }
+  if (!eventValidation.valid) {
+    return res.status(400).json({ error: eventValidation.error });
+  }
+
+  try {
+    if (!eventValidation.v2) {
+      const updated = await updateStock(repository)({
+        sku: bodyValidation.sku,
+        stock: bodyValidation.stock,
+        location: bodyValidation.location,
+        stockItemId: bodyValidation.stockItemId
+      });
+      await notify({
+        sku: bodyValidation.sku,
+        stock: bodyValidation.stock,
+        location: bodyValidation.location
+      });
+      return res.json(updated);
+    }
+
+    const result = await updateStockV2(repository)({
+      eventKey: eventValidation.eventKey,
+      revision: eventValidation.revision,
+      sku: bodyValidation.sku,
+      stock: bodyValidation.stock,
+      location: bodyValidation.location,
+      stockItemId: bodyValidation.stockItemId
+    });
+
+    if (result.shouldNotify) {
+      try {
+        await notify({
+          sku: bodyValidation.sku,
+          stock: bodyValidation.stock,
+          location: bodyValidation.location.trim().toUpperCase()
+        });
+      } catch (err) {
+        logger.error('Error notificando actualización V2 de stock ya confirmada', {
+          sku: bodyValidation.sku,
+          stock: bodyValidation.stock,
+          location: bodyValidation.location,
+          stockItemId: bodyValidation.stockItemId,
+          error: err.message
+        });
+      }
+    }
+    return res.status(200).json(result.response);
+  } catch (err) {
+    logger.error('Error POST /api/stock', {
+      sku: bodyValidation.sku,
+      stock: bodyValidation.stock,
+      location: bodyValidation.location,
+      stockItemId: bodyValidation.stockItemId,
+      error: err.message
+    });
+    if (err.code === 'STOCK_EVENT_CONFLICT') {
+      return res.status(409).json({ error: 'Evento en conflicto' });
+    }
+    return res.status(500).json({ error: 'Error interno' });
+  }
+};
+
 export default class StockController {
   /**
    * GET /api/stock/:sku
@@ -108,45 +211,7 @@ export default class StockController {
   /**
    * POST /api/stock
    */
-  static update = async (req, res) => {
-    const validation = validateUpdateBody(req.body);
-    logger.info('Request POST /api/stock', { body: req.body });
-
-    if (!validation.valid) {
-      return res.status(400).json({ error: validation.error });
-    }
-
-    try {
-      const updated = await updateStock(repo)({
-        sku: validation.sku,
-        stock: validation.stock,
-        location: validation.location,
-        stockItemId: validation.stockItemId
-      });
-      await notifyStockChange({
-        sku: validation.sku,
-        stock: validation.stock,
-        location: validation.location
-      });
-
-      logger.info('Success POST /api/stock', {
-        sku: validation.sku,
-        stock: validation.stock,
-        location: validation.location,
-        stockItemId: validation.stockItemId
-      });
-      return res.json(updated);
-    } catch (err) {
-      logger.error('Error POST /api/stock', {
-        sku: validation.sku,
-        stock: validation.stock,
-        location: validation.location,
-        stockItemId: validation.stockItemId,
-        error: err.message
-      });
-      return res.status(500).json({ error: 'Error interno' });
-    }
-  };
+  static update = createUpdateHandler({ repository: repo, notify: notifyStockChange });
 
   /**
    * POST /api/stock/trx/add

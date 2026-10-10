@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import logger from '../infrastructure/config/logger.js';
 
 export const getStockBySku = (repository) => async (sku) => {
@@ -47,6 +48,39 @@ export const updateStock = (repository) => async ({ sku, stock, location, stockI
     updatedId: updated._id
   });
   return updated;
+};
+
+const semanticPayloadHash = ({ sku, stock, location, stockItemId }) => createHash('sha256')
+  .update(JSON.stringify({
+    sku,
+    stock,
+    location,
+    stockItemId: stockItemId ?? null
+  }))
+  .digest('hex');
+
+export const updateStockV2 = (repository) => async ({
+  eventKey,
+  revision,
+  sku,
+  stock,
+  location,
+  stockItemId
+}) => {
+  const canonical = {
+    source: 'sheets',
+    eventKey: eventKey.trim(),
+    revision,
+    sku: Number(sku),
+    stock,
+    location: location.trim().toUpperCase(),
+    stockItemId: stockItemId === undefined ? undefined : stockItemId.trim()
+  };
+
+  return repository.processStockUpdateEvent({
+    ...canonical,
+    payloadHash: semanticPayloadHash(canonical)
+  });
 };
 
 const buildTransactionResponse = ({ previous, movement, requestedQty, now }) => {
