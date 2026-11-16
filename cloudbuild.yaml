@@ -1,14 +1,21 @@
 options:
-  logging: CLOUD_LOGGING_ONLY 
+  logging: CLOUD_LOGGING_ONLY
 
 steps:
   - id: 'Build image'
     name: 'gcr.io/cloud-builders/docker'
-    args: ['build','--platform=linux/amd64','-t','gcr.io/$PROJECT_ID/dys-api-stock:$SHORT_SHA','.']
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/dys-api-stock:$SHORT_SHA'
+      - '.'
 
   - id: 'Push image'
     name: 'gcr.io/cloud-builders/docker'
-    args: ['push','gcr.io/$PROJECT_ID/dys-api-stock:$SHORT_SHA']
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/dys-api-stock:$SHORT_SHA'
 
   - id: 'Deploy to Cloud Run'
     name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -16,11 +23,15 @@ steps:
     args:
       - '-c'
       - |
+        # API keys are delivered as Secret Manager references by
+        # scripts/gcp/configure-api-key-secrets.sh. This deploy intentionally
+        # passes no env or secret flags so existing mappings are preserved.
+        service_account="sa-dys-api-stock@${PROJECT_ID}.iam.gserviceaccount.com"
         gcloud run deploy dys-api-stock \
           --image gcr.io/$PROJECT_ID/dys-api-stock:$SHORT_SHA \
           --region=us-central1 \
           --platform=managed \
-          --service-account=sa-dys-api-stock@${PROJECT_ID}.iam.gserviceaccount.com \
+          --service-account="${service_account}" \
           --allow-unauthenticated \
           --port=8080 \
           --timeout=300s \
